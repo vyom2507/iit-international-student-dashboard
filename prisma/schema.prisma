@@ -1,0 +1,40 @@
+// prisma/schema.prisma
+
+// Generates the Prisma Client for use in lib/prisma.ts
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Neon Postgres datasource
+datasource db {
+  provider = "postgresql"
+  url      = env("pprisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19sODhXRzM4eGhRaXFnUnN2b1E5a2IiLCJhcGlfa2V5IjoiMDFLOVJUUUtOSldLVFhUNDhGVlZSWEIzWlQiLCJ0ZW5hbnRfaWQiOiJlYmYwN2UyYjhjYmQ3OWQzZGRhMTFjZGFmNmE3ZTAzMGQ5ZjdiNzUwOTY3MmRiMzVhYTlhNDU1MzNjNGYzNzJjIiwiaW50ZXJuYWxfc2VjcmV0IjoiMjMwOGQwYjktZjFhNC00YmZkLThjM2QtYmUzM2EwYjRjMjliIn0.xPjal1Iijcuj6Msgl7_D_cMu_EGPLj2s52k6SS48n0Y") 
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  priceCents  Int
+  category    String
+  condition   String
+  imageUrl    String
+  campus      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([category])
+  @@index([campus])
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  stripeSessionId String   @unique
+  amountTotal     Int
+  currency        String   @default("usd")
+  status          String
+  createdAt       DateTime @default(now())
+}
+
