@@ -1,275 +1,351 @@
+// components/campus-navigation/CampusMap.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import L, { Map as LeafletMap, LatLngExpression, Polyline } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useState } from "react";
+import dynamic from "next/dynamic";
+import type { LatLngTuple } from "leaflet";
 import { Card } from "@/components/ui/Card";
-import { MapPin, Navigation, Clock } from "lucide-react";
+import "leaflet/dist/leaflet.css";
 
-type LatLngTuple = [number, number];
+// OpenRouteService API key
+const OPENROUTESERVICE_API_KEY =
+  process.env.NEXT_PUBLIC_OPENROUTESERVICE_API_KEY ||
+  "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjE1NmE0ZTA0NzhjOTQ2NGRhNzZmNTE1OWIxYzJjYmI4IiwiaCI6Im11cm11cjY0In0=";
 
-const PLACES = {
-  mtcc: {
+// Dynamic imports to avoid SSR issues with react-leaflet
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((m) => m.Marker),
+  { ssr: false }
+);
+const Polyline = dynamic(
+  () => import("react-leaflet").then((m) => m.Polyline),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import("react-leaflet").then((m) => m.Popup),
+  { ssr: false }
+);
+
+// IIT campus center
+const IIT_CENTER: LatLngTuple = [41.8349, -87.6270];
+
+// Named locations on/near campus
+const START_LOCATIONS: {
+  id: string;
+  label: string;
+  coords: LatLngTuple;
+}[] = [
+  {
+    id: "dorms",
+    label: "Dorms / IIT Tower (Default)",
+    coords: [41.8359, -87.6266]
+  },
+  {
     id: "mtcc",
-    name: "McCormick Tribune Campus Center (MTCC)",
-    coords: [41.8349, -87.6270] as LatLngTuple
+    label: "MTCC (Student Center)",
+    coords: [41.8355, -87.6271]
   },
-  galvin: {
-    id: "galvin",
-    name: "Paul V. Galvin Library",
-    coords: [41.8359, -87.6278] as LatLngTuple
-  },
-  kaplan: {
-    id: "kaplan",
-    name: "Kaplan Institute",
-    coords: [41.8337, -87.6275] as LatLngTuple
-  },
-  roweVillage: {
-    id: "roweVillage",
-    name: "Rowe Village Residence Hall",
-    coords: [41.8319, -87.6259] as LatLngTuple
-  },
-  greenLine: {
-    id: "greenLine",
-    name: "35th–Bronzeville–IIT (Green Line)",
-    coords: [41.8328, -87.6253] as LatLngTuple
-  },
-  redLine: {
-    id: "redLine",
-    name: "Sox–35th (Red Line)",
-    coords: [41.8312, -87.6307] as LatLngTuple
+  {
+    id: "cta",
+    label: "CTA Green/Red Line (35th-Bronzeville-IIT)",
+    coords: [41.8318, -87.6264]
   }
-};
+];
 
-type PlaceId = keyof typeof PLACES;
+const DESTINATIONS: {
+  id: string;
+  label: string;
+  coords: LatLngTuple;
+  description: string;
+}[] = [
+  {
+    id: "mtcc",
+    label: "MTCC (Student Center)",
+    coords: [41.8355, -87.6271],
+    description: "Student center, food, lounges, and many events."
+  },
+  {
+    id: "hermann",
+    label: "Hermann Hall",
+    coords: [41.8359, -87.6249],
+    description:
+      "Many orientation events, conferences, and large gatherings happen here."
+  },
+  {
+    id: "galvin",
+    label: "Galvin Library",
+    coords: [41.8353, -87.6288],
+    description:
+      "Main library for quiet study, group rooms, and research support."
+  },
+  {
+    id: "keating",
+    label: "Keating Sports Center",
+    coords: [41.8345, -87.624],
+    description: "Gym, fitness, and sports activities."
+  },
+  {
+    id: "stuart",
+    label: "Stuart Building",
+    coords: [41.8348, -87.6279],
+    description: "Classrooms and labs for engineering & tech courses."
+  },
+  {
+    id: "cta",
+    label: "CTA 35th-Bronzeville-IIT Station",
+    coords: [41.8318, -87.6264],
+    description: "Green/Red line stop right by campus."
+  }
+];
 
 export function CampusMap() {
-  const mapRef = useRef<LeafletMap | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const routeRef = useRef<Polyline | null>(null);
+  const [startId, setStartId] = useState<string>("dorms");
+  const [destinationId, setDestinationId] = useState<string>("mtcc");
+  const [route, setRoute] = useState<LatLngTuple[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{
+    distance: number;
+    duration: number;
+  } | null>(null);
 
-  const [origin, setOrigin] = useState<PlaceId>("roweVillage");
-  const [destination, setDestination] = useState<PlaceId>("mtcc");
-  const [loadingRoute, setLoadingRoute] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [distanceText, setDistanceText] = useState<string | null>(null);
-  const [durationText, setDurationText] = useState<string | null>(null);
+  const handleRoute = async () => {
+    setErrorMsg(null);
+    setRoute([]);
+    setSummary(null);
 
-  // Initialize Leaflet map once
-  useEffect(() => {
-    if (mapRef.current || !mapContainerRef.current) return;
+    const start = START_LOCATIONS.find((s) => s.id === startId);
+    const dest = DESTINATIONS.find((d) => d.id === destinationId);
 
-    const center: LatLngExpression = [41.8341, -87.6237]; // IIT Mies Campus
-    const map = L.map(mapContainerRef.current).setView(center, 15);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(map);
-
-    // Add markers for all defined places
-    Object.values(PLACES).forEach((place) => {
-      L.marker(place.coords)
-        .addTo(map)
-        .bindPopup(place.name);
-    });
-
-    mapRef.current = map;
-  }, []);
-
-  const fetchRoute = async () => {
-    setError(null);
-    setDistanceText(null);
-    setDurationText(null);
-
-    if (origin === destination) {
-      setError("Origin and destination cannot be the same.");
+    if (!start || !dest) {
+      setErrorMsg("Please select both a start and a destination.");
       return;
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_ORS_API_KEY;
-    if (!apiKey) {
-      setError("Missing NEXT_PUBLIC_ORS_API_KEY in .env.local");
+    if (!OPENROUTESERVICE_API_KEY) {
+      setErrorMsg("OpenRouteService API key is missing.");
       return;
     }
 
-    const originPlace = PLACES[origin];
-    const destPlace = PLACES[destination];
-
-    const [originLat, originLng] = originPlace.coords;
-    const [destLat, destLng] = destPlace.coords;
-
-    // openrouteservice expects: start=lng,lat & end=lng,lat
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${encodeURIComponent(
-      apiKey
-    )}&start=${originLng},${originLat}&end=${destLng},${destLat}`;
-
+    setLoading(true);
     try {
-      setLoadingRoute(true);
+      // ORS expects [lon, lat]
+      const startLon = start.coords[1];
+      const startLat = start.coords[0];
+      const destLon = dest.coords[1];
+      const destLat = dest.coords[0];
+
+      const url = `https://api.openrouteservice.org/v2/directions/foot-walking?api_key=${encodeURIComponent(
+        OPENROUTESERVICE_API_KEY
+      )}&start=${startLon},${startLat}&end=${destLon},${destLat}`;
 
       const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Route request failed (${res.status})`);
-      }
-
       const data = await res.json();
-      const feature = data.features?.[0];
-      const coords = feature?.geometry?.coordinates || [];
-      const summary = feature?.properties?.summary;
 
-      if (!coords.length) {
-        throw new Error("No route found between these locations.");
+      if ((data as any).error) {
+        console.error("ORS error:", (data as any).error);
+        setErrorMsg(
+          (data as any).error.message ||
+            "Routing service returned an error. Try different points."
+        );
+        return;
       }
 
-      const latlngs: LatLngExpression[] = coords.map((c: number[]) => [
-        c[1], // lat
-        c[0]  // lng
-      ]);
+      const feature = data?.features?.[0];
+      const coords = feature?.geometry?.coordinates;
 
-      if (mapRef.current) {
-        // Remove previous route
-        if (routeRef.current) {
-          routeRef.current.removeFrom(mapRef.current);
-        }
+      if (!coords || !Array.isArray(coords)) {
+        console.error("Unexpected ORS data:", data);
+        setErrorMsg("Route data was not in expected format.");
+        return;
+      }
 
-        // Draw new route
-        routeRef.current = L.polyline(latlngs, {
-          color: "#f97373",
-          weight: 4
-        }).addTo(mapRef.current);
-
-        mapRef.current.fitBounds(routeRef.current.getBounds(), {
-          padding: [24, 24]
+      const routeSummary = feature?.properties?.summary;
+      if (
+        routeSummary &&
+        typeof routeSummary.distance === "number" &&
+        typeof routeSummary.duration === "number"
+      ) {
+        setSummary({
+          distance: routeSummary.distance,
+          duration: routeSummary.duration
         });
       }
 
-      if (summary) {
-        // distance in meters, duration in seconds
-        const distanceKm = (summary.distance || 0) / 1000;
-        const durationMin = Math.round((summary.duration || 0) / 60);
+      const latLngs: LatLngTuple[] = coords.map((c: [number, number]) => [
+        c[1],
+        c[0]
+      ]);
 
-        setDistanceText(`${distanceKm.toFixed(2)} km`);
-        setDurationText(`${durationMin} min`);
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to load route from openrouteservice.");
+      setRoute(latLngs);
+    } catch (err) {
+      console.error("Route fetch error:", err);
+      setErrorMsg("Something went wrong while contacting the routing service.");
     } finally {
-      setLoadingRoute(false);
+      setLoading(false);
     }
   };
 
+  const startLocation = START_LOCATIONS.find((s) => s.id === startId);
+  const destination = DESTINATIONS.find((d) => d.id === destinationId);
+
+  const formattedSummary = (() => {
+    if (!summary) return null;
+    const km = summary.distance / 1000;
+    const minutes = Math.round(summary.duration / 60);
+    return {
+      distanceLabel: `${km.toFixed(2)} km`,
+      timeLabel: `${minutes} min`
+    };
+  })();
+
   return (
-    <Card className="flex h-full flex-col">
-      <header className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-600/20 text-red-300 ring-1 ring-red-500/40">
-            <MapPin className="h-4 w-4" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold text-slate-50">
-              IIT Campus Navigation (OpenRouteService)
-            </h2>
-            <p className="text-xs text-slate-400">
-              Find routes between dorms, stations, and key buildings on IIT&apos;s
-              Mies Campus using openrouteservice and OpenStreetMap.
+    <Card className="relative z-0 overflow-hidden border border-gray-200 bg-gray-100 p-0 text-slate-900">
+      {/* Control bar */}
+      <div className="flex flex-col gap-3 border-b border-gray-200 bg-gray-100 px-3 py-3 text-xs md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">
+            IIT Campus Navigation
+          </h2>
+          <p className="text-[11px] text-slate-600">
+            Choose where you&apos;re starting from and where you want to go on
+            campus. We&apos;ll draw a walking route and estimate walking time.
+          </p>
+
+          {formattedSummary && startLocation && destination && (
+            <p className="mt-1 text-[11px] text-emerald-700">
+              Approx.{" "}
+              <span className="font-semibold">
+                {formattedSummary.distanceLabel}
+              </span>{" "}
+              ·{" "}
+              <span className="font-semibold">
+                {formattedSummary.timeLabel} walking
+              </span>{" "}
+              from <span className="font-semibold">{startLocation.label}</span>{" "}
+              to <span className="font-semibold">{destination.label}</span>.
             </p>
-          </div>
+          )}
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-1 text-[10px] text-slate-200 ring-1 ring-slate-700">
-          <Navigation className="h-3 w-3" />
-          openrouteservice · driving-car
-        </span>
-      </header>
 
-      <div className="mb-3 grid gap-2 text-xs sm:grid-cols-[1.6fr,1fr]">
-        {/* Map */}
-        <div
-          ref={mapContainerRef}
-          className="h-64 rounded-xl bg-slate-950 ring-1 ring-slate-800"
-        />
-
-        {/* Controls */}
-        <div className="flex flex-col gap-2 rounded-xl bg-slate-950/70 p-3 ring-1 ring-slate-800">
-          <div>
-            <p className="mb-1 text-[11px] font-semibold text-slate-100">
-              Plan your campus route
-            </p>
-            <p className="text-[10px] text-slate-400">
-              Choose where you&apos;re starting and where you&apos;re going on IIT
-              Mies Campus. We&apos;ll draw the route and estimate distance &
-              travel time.
-            </p>
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              Start from
+            </label>
+            <select
+              value={startId}
+              onChange={(e) => setStartId(e.target.value)}
+              className="h-8 rounded-md border border-gray-300 bg-white px-2 text-[11px] text-slate-900 focus:border-red-500 focus:outline-none"
+            >
+              {START_LOCATIONS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="grid grid-cols-1 gap-2">
-            <div className="space-y-1">
-              <label className="text-[10px] text-slate-300">From</label>
-              <select
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] text-slate-100 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value as PlaceId)}
-              >
-                {Object.values(PLACES).map((place) => (
-                  <option key={place.id} value={place.id}>
-                    {place.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] text-slate-300">To</label>
-              <select
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] text-slate-100 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value as PlaceId)}
-              >
-                {Object.values(PLACES).map((place) => (
-                  <option key={place.id} value={place.id}>
-                    {place.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              Take me to
+            </label>
+            <select
+              value={destinationId}
+              onChange={(e) => setDestinationId(e.target.value)}
+              className="h-8 rounded-md border border-gray-300 bg-white px-2 text-[11px] text-slate-900 focus:border-red-500 focus:outline-none"
+            >
+              {DESTINATIONS.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button
             type="button"
-            onClick={fetchRoute}
-            disabled={loadingRoute}
-            className="mt-1 inline-flex items-center justify-center rounded-lg bg-red-600 px-3 py-2 text-[11px] font-semibold text-white shadow-md shadow-red-900/40 hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-red-800"
+            onClick={handleRoute}
+            disabled={loading}
+            className="inline-flex h-8 items-center justify-center rounded-md bg-red-600 px-3 text-[11px] font-semibold text-white shadow-sm hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-red-300"
           >
-            <Navigation className="mr-1 h-3.5 w-3.5" />
-            {loadingRoute ? "Finding route..." : "Get route with ORS"}
+            {loading ? "Finding route…" : "Show walking route"}
           </button>
-
-          {error && (
-            <p className="mt-1 text-[10px] text-red-300">Error: {error}</p>
-          )}
-
-          {distanceText && durationText && (
-            <div className="mt-2 rounded-lg bg-slate-900/90 p-2 text-[11px] text-slate-100 ring-1 ring-slate-800">
-              <p className="flex items-center gap-1 font-semibold">
-                <Clock className="h-3.5 w-3.5 text-red-300" />
-                Estimated route
-              </p>
-              <p className="mt-1 text-[11px] text-slate-200">
-                Distance: <span className="font-semibold">{distanceText}</span>
-              </p>
-              <p className="text-[11px] text-slate-200">
-                Duration: <span className="font-semibold">{durationText}</span>
-              </p>
-            </div>
-          )}
-
-          {!error && !distanceText && !loadingRoute && (
-            <p className="mt-1 text-[10px] text-slate-500">
-              Tip: To focus on walking routes, change the URL path from{" "}
-              <code>driving-car</code> to <code>foot-walking</code> in the
-              fetch call.
-            </p>
-          )}
         </div>
+      </div>
+
+      {errorMsg && (
+        <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Map */}
+      <div className="relative z-0 h-[420px] w-full bg-gray-200">
+        <MapContainer
+          center={IIT_CENTER}
+          zoom={16}
+          scrollWheelZoom={true}
+          className="h-full w-full"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://osm.org">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {startLocation && (
+            <Marker position={startLocation.coords}>
+              <Popup>
+                <div className="text-[11px]">
+                  <strong>Start: {startLocation.label}</strong>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {destination && (
+            <Marker position={destination.coords}>
+              <Popup>
+                <div className="text-[11px]">
+                  <strong>Destination: {destination.label}</strong>
+                  <br />
+                  <span className="text-[10px] text-slate-700">
+                    {destination.description}
+                  </span>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {DESTINATIONS.map((d) => (
+            <Marker key={d.id} position={d.coords}>
+              <Popup>
+                <div className="text-[11px]">
+                  <strong>{d.label}</strong>
+                  <br />
+                  <span className="text-[10px] text-slate-700">
+                    {d.description}
+                  </span>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {route.length > 0 && (
+            <Polyline
+              positions={route}
+              pathOptions={{ color: "red", weight: 4, opacity: 0.8 }}
+            />
+          )}
+        </MapContainer>
       </div>
     </Card>
   );

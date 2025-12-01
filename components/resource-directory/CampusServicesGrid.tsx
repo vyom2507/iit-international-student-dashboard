@@ -70,10 +70,10 @@ export function CampusServicesGrid() {
   return (
     <Card>
       <header className="mb-3">
-        <h2 className="text-sm font-semibold text-slate-50">
+        <h2 className="text-sm font-semibold text-slate-80">
           Campus Services & Support
         </h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-600">
           Key offices that international students visit most often. Use this
           as a launchpad into official IIT websites and systems.
         </p>
@@ -85,17 +85,17 @@ export function CampusServicesGrid() {
           return (
             <div
               key={svc.id}
-              className="flex items-start gap-2 rounded-xl bg-slate-950/70 p-2.5 ring-1 ring-slate-800"
+              className="flex items-start gap-2 rounded-xl bg-slate-900/70 p-2.5 ring-1 ring-slate-800"
             >
               <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-600/20 text-red-300 ring-1 ring-red-500/40">
                 <Icon className="h-4 w-4" />
               </span>
               <div>
-                <p className="text-[11px] font-semibold text-slate-100">
+                <p className="text-[11px] font-semibold text-slate-50">
                   {svc.name}
                 </p>
                 <p className="text-[10px] text-slate-300">{svc.role}</p>
-                <p className="mt-1 text-[10px] text-slate-400">
+                <p className="mt-1 text-[10px] text-slate-100">
                   {svc.description}
                 </p>
                 {svc.suggestedPath && (

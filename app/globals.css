@@ -4,6 +4,9 @@
 
 body {
   @apply bg-slate-950 text-slate-100;
+  background-image: url("/Crown_hall.jpg");
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .scrollbar-thin {

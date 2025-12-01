@@ -1,4 +1,4 @@
-// File: C:\Users\Legacy\Desktop\iit-international-student-dashboard\app\page.tsx
+// File: D:\iStudenthub\iit-international-student-dashboard\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

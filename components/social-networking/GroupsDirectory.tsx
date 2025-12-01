@@ -92,10 +92,10 @@ export function GroupsDirectory() {
             <Users2 className="h-4 w-4" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-50">
+            <h2 className="text-sm font-semibold text-slate-800">
               Discover Student Groups (via 312)
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-700">
               A sample of IIT organizations you&apos;ll find on 312. Browse here,
               then join officially on the 312 platform.
             </p>

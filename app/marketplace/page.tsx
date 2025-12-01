@@ -1,26 +1,44 @@
-import type { Product } from "@prisma/client";
+// app/marketplace/page.tsx
 import { prisma } from "@/lib/prisma";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { TopNavbar } from "@/components/layout/TopNavbar";
 import { MarketplaceShell } from "@/components/marketplace/MarketplaceShell";
 
-// Ensure this page is always rendered on the server with fresh data
-export const dynamic = "force-dynamic";
-
 export default async function MarketplacePage() {
-  let products: Product[] = [];
+  const productsFromDb = await prisma.product.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: "desc" },
+    include: {
+      owner: true
+    }
+  });
 
-  try {
-    products = await prisma.product.findMany({
-      orderBy: { createdAt: "desc" }
-    });
-  } catch (error) {
-    console.error("Error loading products from Prisma:", error);
-    // You can also show a friendly UI message instead of crashing
-    products = [];
-  }
+  const products = productsFromDb.map((p) => ({
+    id: p.id,
+    title: p.title,
+    priceCents: p.priceCents,
+    category: p.category,
+    condition: p.condition,
+    campus: p.campus,
+    imageUrl: p.imageUrl,
+    isActive: p.isActive,
+    ownerName: p.owner?.fullName ?? "IIT student",
+    ownerProgram: p.owner?.program ?? ""
+  }));
 
   return (
-    <div className="space-y-4">
-      <MarketplaceShell products={products} />
+    <div className="flex min-h-screen bg-slate-950 text-slate-100">
+      {/* Sidebar (left) */}
+      <Sidebar />
+
+      {/* Right: navbar + marketplace content */}
+      <div className="flex min-h-screen flex-1 flex-col">
+        <TopNavbar />
+
+        <main className="flex-1 overflow-y-auto bg-slate-100 p-4 md:p-6">
+          <MarketplaceShell initialProducts={products} />
+        </main>
+      </div>
     </div>
   );
 }

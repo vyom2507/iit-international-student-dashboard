@@ -1,78 +1,95 @@
-import { NextResponse } from "next/server";
+// app/api/marketplace/products/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+// GET /api/marketplace/products?ownerId=... (optional)
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const ownerId = searchParams.get("ownerId") ?? undefined;
+
+    const where = ownerId ? { ownerId } : {};
+    const products = await prisma.product.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        owner: true
+      }
+    });
+
+    return NextResponse.json({ products });
+  } catch (err) {
+    console.error("GET /api/marketplace/products error:", err);
+    return NextResponse.json(
+      { error: "Failed to load products" },
+      { status: 500 }
+    );
+  }
 }
 
-export async function POST(req: Request) {
+// POST /api/marketplace/products
+// Body: { title, description, priceCents, category, condition, imageUrl, campus, paymentOptions, ownerId }
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
     const {
       title,
       description,
-      price,
+      priceCents,
       category,
       condition,
+      imageUrl,
       campus,
-      imageUrl
-    } = body || {};
+      paymentOptions,
+      ownerId
+    } = body;
 
-    if (!title || !description || !price || !category || !condition || !campus) {
+    if (
+      !title ||
+      !description ||
+      !priceCents ||
+      !category ||
+      !condition ||
+      !imageUrl ||
+      !campus ||
+      !paymentOptions ||
+      !ownerId
+    ) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields for product" },
         { status: 400 }
       );
     }
 
-    const priceNumber = Number(price);
-    if (isNaN(priceNumber) || priceNumber <= 0) {
-      return NextResponse.json(
-        { error: "Price must be a positive number" },
-        { status: 400 }
-      );
-    }
-
-    const priceCents = Math.round(priceNumber * 100);
-
-    let baseSlug = slugify(title);
-    if (!baseSlug) baseSlug = `item-${Date.now()}`;
-
-    let slug = baseSlug;
-    let attempt = 1;
-
-    // ensure unique slug
-    // (simple loop; in practice you might use a more robust strategy)
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const existing = await prisma.product.findUnique({ where: { slug } });
-      if (!existing) break;
-      slug = `${baseSlug}-${attempt++}`;
-    }
+    const slugBase =
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "listing";
+    const slug = `${slugBase}-${Date.now().toString(36)}`;
 
     const product = await prisma.product.create({
       data: {
         title,
-        slug,
         description,
         priceCents,
         category,
         condition,
+        imageUrl,
         campus,
-        imageUrl: imageUrl || "/marketplace/placeholder.jpg"
+        paymentOptions, // e.g. "card,in_person"
+        ownerId,
+        slug,
+        isActive: true
       }
     });
 
     return NextResponse.json({ product }, { status: 201 });
-  } catch (err: any) {
-    console.error("Create product error:", err);
+  } catch (err) {
+    console.error("POST /api/marketplace/products error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create product" },
+      { error: "Failed to create product" },
       { status: 500 }
     );
   }

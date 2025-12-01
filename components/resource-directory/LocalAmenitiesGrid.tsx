@@ -75,10 +75,10 @@ export function LocalAmenitiesGrid() {
   return (
     <Card>
       <header className="mb-3">
-        <h2 className="text-sm font-semibold text-slate-50">
+        <h2 className="text-sm font-semibold text-slate-800">
           Local Amenities Around Campus
         </h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-700">
           Essentials for daily life in Chicago near IIT—great to explore in your
           first weeks on campus.
         </p>
@@ -100,7 +100,7 @@ export function LocalAmenitiesGrid() {
                   {item.name}
                 </p>
                 <p className="text-[10px] text-slate-300">{item.type}</p>
-                <p className="mt-1 text-[10px] text-slate-400">
+                <p className="mt-1 text-[10px] text-slate-300">
                   {item.description}
                 </p>
                 <p className="mt-1 text-[9px] text-slate-500">

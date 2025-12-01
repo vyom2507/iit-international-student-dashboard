@@ -75,10 +75,10 @@ export function TransportationGrid() {
   return (
     <Card>
       <header className="mb-3">
-        <h2 className="text-sm font-semibold text-slate-50">
+        <h2 className="text-sm font-semibold text-slate-800">
           Transportation & Getting Around
         </h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-700">
           Understand your options for moving between campus, home, and the rest
           of Chicago.
         </p>
@@ -100,7 +100,7 @@ export function TransportationGrid() {
                   {item.mode}
                 </p>
                 <p className="text-[10px] text-slate-300">{item.label}</p>
-                <p className="mt-1 text-[10px] text-slate-400">
+                <p className="mt-1 text-[10px] text-slate-300">
                   {item.description}
                 </p>
                 <p className="mt-1 text-[9px] text-slate-500">

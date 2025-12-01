@@ -79,10 +79,10 @@ export function EmergencyContactsPanel() {
           <ShieldAlert className="h-4 w-4" />
         </span>
         <div>
-          <h2 className="text-sm font-semibold text-slate-50">
+          <h2 className="text-sm font-semibold text-slate-800">
             Emergency & Support Contacts
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-700">
             Know who to call for urgent help, health concerns, or immigration
             questions—before you ever need it.
           </p>

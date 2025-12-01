@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { clsx } from "clsx";
+import clsx from "clsx";
 import {
   MapPin,
   School,
@@ -10,13 +10,14 @@ import {
   FileText,
   Plane,
   LayoutDashboard,
-  ShoppingBag
+  ShoppingBag,
+  UserCircle  
 } from "lucide-react";
 
 const navItems = [
   {
     label: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard
   },
   {
@@ -48,6 +49,11 @@ const navItems = [
     label: "Marketplace",
     href: "/marketplace",
     icon: ShoppingBag
+  },
+  {
+    label: "Profile",
+    href: "/profile",
+    icon: UserCircle
   }
 ];
 
@@ -55,7 +61,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 flex-shrink-0 flex-col bg-black/95 shadow-2xl md:flex">
+    <aside
+      className="
+        hidden
+        md:flex
+        sticky top-0
+        h-screen
+        w-64 flex-shrink-0 flex-col
+        bg-black/95
+        shadow-2xl
+      "
+    >
+      {/* Brand header */}
       <div className="flex h-16 items-center gap-2 px-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 via-red-500 to-red-400 text-white shadow-lg">
           <span className="text-lg font-bold">IIT</span>
@@ -70,12 +87,13 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="mt-4 flex-1 space-y-1 px-3">
+      {/* Nav items */}
+      <nav className="mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
             pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href));
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
           return (
             <Link
@@ -95,6 +113,7 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* Footer tip */}
       <div className="border-t border-slate-800 px-4 py-3">
         <p className="text-xs text-slate-500">
           Tip: Bookmark this dashboard to access your IIT support toolkit in one

@@ -100,10 +100,10 @@ export function EventsFeed312() {
             <CalendarDays className="h-4 w-4" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-50">
+            <h2 className="text-sm font-semibold text-slate-800">
               Upcoming Social & Campus Events
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-700">
               These sample events mirror the kinds of activities posted on 312.
               Filter by what matters most to you.
             </p>

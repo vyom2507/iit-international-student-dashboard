@@ -17,10 +17,10 @@ export function MentorConnections() {
           <HeartHandshake className="h-4 w-4" />
         </span>
         <div>
-          <h2 className="text-sm font-semibold text-slate-50">
+          <h2 className="text-sm font-semibold text-slate-800">
             Peer & Mentor Connections
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-700">
             Go beyond events—build a support network of peers, mentors, and
             staff who understand the international student journey.
           </p>
