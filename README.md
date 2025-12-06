@@ -5,7 +5,7 @@ Illinois Institute of Technology (IIT)** as they transition to campus. Built
 with **Next.js 14**, **React**, and **Tailwind CSS** and prepared for external
 APIs (IIT systems, calendar, chat, mapping, and a student marketplace).
 
-## Major Features
+## Major Features in the portal
 
 - Sticky red-gradient navbar with:
   - Profile avatar and settings dropdown (Update Profile, Change Password, Logout)
